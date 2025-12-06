@@ -1,0 +1,10 @@
+[profile.default]
+libs = ["lib"]
+
+remappings = [
+  "@zetachain/protocol-contracts/=lib/protocol-contracts/contracts/",
+  "@openzeppelin/=lib/openzeppelin-contracts/"
+]
+
+
+
