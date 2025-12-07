@@ -2,7 +2,7 @@
 libs = ["lib"]
 
 remappings = [
-  "@zetachain/protocol-contracts/=lib/protocol-contracts/contracts/",
+  "@zetachain/protocol-contracts/=lib/protocol-contracts/",
   "@openzeppelin/=lib/openzeppelin-contracts/"
 ]
 
