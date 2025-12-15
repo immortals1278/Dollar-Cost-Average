@@ -16,7 +16,7 @@ contract DCAController {
     address public universalApp;         // 通用合约地址
     uint256 public zetaChainId;          
 
-    // ============= 定投方案结构体 =============
+    
     struct DCASchedule {
         address user;            // 用户
         address tokenIn;         //投入币种
@@ -84,7 +84,7 @@ contract DCAController {
         // 安排下次执行
         s.nextExec = block.timestamp + s.interval;
 
-        // ===== 组装跨链 message =====
+        
         // opType = 1 (swap)
         // params = (bytes userId, address tokenIn)
         bytes memory userId = abi.encodePacked(id);
@@ -132,7 +132,7 @@ contract DCAController {
             abi.encode(
                 userId,
                 wantUSDT,
-                abi.encodePacked(msg.sender) // EVM address -> 20 bytes
+                abi.encodePacked(msg.sender) //用户接受地址
             )
         );
 

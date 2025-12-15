@@ -17,7 +17,7 @@ interface IUniswapV2Router {
     ) external returns (uint[] memory amounts);
 }
 
-contract ZetaDCAExecution is UniversalContract {
+contract ZetaDCAExecutionBTC is UniversalContract {
     IGatewayEVM public immutable gateway;
     IUniswapV2Router public immutable dex;
 
@@ -27,14 +27,14 @@ contract ZetaDCAExecution is UniversalContract {
     /// @notice ZRC20 地址
     address public immutable USDT_ZRC20;
     address public immutable USDC_ZRC20;
-    address public immutable SOL_ZRC20;
+    address public immutable BTC_ZRC20;
     
 
     event BoughtAndStored(
         bytes indexed userId,       // 源链用户自定义 ID
         address indexed tokenIn,    // 输入的 ZRC20
         uint256 amountIn,
-        uint256 solOut,
+        uint256 btcOut,
         uint256 totalStored
     );
     event UserBalance(
@@ -47,18 +47,18 @@ contract ZetaDCAExecution is UniversalContract {
         address _dex,
         address _usdt,
         address _usdc,
-        address _sol
+        address _btc
     ) {
         gateway = IGatewayEVM(_gateway);
         dex = IUniswapV2Router(_dex);
         USDT_ZRC20 = _usdt;
         USDC_ZRC20 = _usdc;
-        SOL_ZRC20  = _sol;
+        BTC_ZRC20  = _btc;
     }
 
     struct SwapMsg {
-        bytes userId;       // 源链传过来的用户标识（比如 keccak(user address) 或钱包地址）
-        address tokenIn;    // 输入 token (USDT/USDC/ETH 的 ZRC20)
+        bytes userId;       // 源链传过来的用户标识
+        address tokenIn;    // 输入 token (USDT/USDC 的 ZRC20)
     }
 
 
@@ -88,7 +88,7 @@ contract ZetaDCAExecution is UniversalContract {
         }
     }
 
-    /// @notice 查询用户在 ZetaChain 上累计买到多少 SOL（ZRC20）
+    /// @notice 查询用户在 ZetaChain 上累计买到多少 BTC（ZRC20）
     function getUserBalance(bytes calldata userId) internal {
             uint256 bal = userBalances[userId];
             emit UserBalance(userId, bal);
@@ -98,7 +98,7 @@ contract ZetaDCAExecution is UniversalContract {
         bytes memory userId, 
         address tokenIn, 
         uint256 amountIn
-    ) internal returns (uint256 solOut) {
+    ) internal returns (uint256 btcOut) {
         require(amountIn > 0, "Zero amount");
         require(
             tokenIn == USDT_ZRC20 || tokenIn == USDC_ZRC20,
@@ -111,7 +111,7 @@ contract ZetaDCAExecution is UniversalContract {
         // 2. 走 ZetaChain 内置 DEX（总是 ZRC20 → ZRC20）
         address[] memory path = new address[](2);
         path[0] = tokenIn;
-        path[1] = SOL_ZRC20;
+        path[1] = BTC_ZRC20;
 
         uint[] memory amounts = dex.swapExactTokensForTokens(
             amountIn,
@@ -121,21 +121,21 @@ contract ZetaDCAExecution is UniversalContract {
             block.timestamp + 300
         );
 
-        solOut = amounts[1];// 输出的 SOL（ZRC20）
-        require(solOut > 0, "Swap returned zero");
+        btcOut = amounts[1];// 输出的 SOL（ZRC20）
+        require(btcOut > 0, "Swap returned zero");
 
         // 3. 存入 VAULT
-        userBalances[userId] += solOut;
+        userBalances[userId] += btcOut;
 
         emit BoughtAndStored(
             userId,
             tokenIn,
             amountIn,
-            solOut,
+            btcOut,
             userBalances[userId]
         );
 
-        return solOut;
+        return btcOut;
     }
 
     /// @notice 用户提现（输入希望收到的 USDT 数量）
@@ -143,29 +143,29 @@ contract ZetaDCAExecution is UniversalContract {
         bytes memory userId,
         uint256 usdtDesired,
         bytes memory recipient//用户接受地址
-    ) internal returns (uint256 solSpent, uint256 usdtOut) {
+    ) internal returns (uint256 btcSpent, uint256 usdtOut) {
 
         require(recipient.length == 20, "Recipient must be EVM address (20 bytes)");
-        address recipientEVM = address(bytes20(recipient));
+        address recipientEVM = address(bytes20(recipient));//将bytes变成能用的地址
 
-        // 1. 先反算需要多少 SOL（ZRC20）才能换出 usdtDesired
+        // 1. 先反算需要多少 btc（ZRC20）才能换出 usdtDesired
         address[] memory path = new address[](2);
-        path[0] = SOL_ZRC20;
+        path[0] = BTC_ZRC20;
         path[1] = USDT_ZRC20;
 
         uint[] memory quote = dex.getAmountsIn(usdtDesired, path);
-        uint256 solRequired = quote[0];
+        uint256 btcRequired = quote[0];
 
-        require(userBalances[userId] >= solRequired, "Not enough balance");
+        require(userBalances[userId] >= btcRequired, "Not enough balance");
 
         // 扣减余额
-        userBalances[userId] -= solRequired;
+        userBalances[userId] -= btcRequired;
 
-        // 2. 用 SOL → USDT swap
-        IZRC20(SOL_ZRC20).approve(address(dex), solRequired);
+        // 2. 用 BTC → USDT swap
+        IZRC20(BTC_ZRC20).approve(address(dex), btcRequired);
 
         uint[] memory results = dex.swapExactTokensForTokens(
-            solRequired,
+            btcRequired,
             usdtDesired,           // 用户希望至少收到这么多 U
             path,
             address(this),
@@ -192,9 +192,9 @@ contract ZetaDCAExecution is UniversalContract {
             })
         );
 
-        emit WithdrawExecuted(userId, solRequired, usdtOut, recipientEVM);
+        emit WithdrawExecuted(userId, btcRequired, usdtOut, recipientEVM);
 
-        return (solRequired, usdtOut);
+        return (btcRequired, usdtOut);
     }
 
 }
