@@ -1,10 +1,12 @@
 [profile.default]
-libs = ["lib"]
+libs = ["lib", "dependencies"]
 
 remappings = [
   "@zetachain/protocol-contracts/=lib/protocol-contracts/",
   "@openzeppelin/=lib/openzeppelin-contracts/"
 ]
+
+[dependencies]
 
 
 

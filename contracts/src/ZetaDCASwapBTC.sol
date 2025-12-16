@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.25;
+pragma solidity ^0.8.26;
 
 // ============= ZetaChain 官方接口 =============
-import "@zetachain/protocol-contracts/contracts/evm/interfaces/UniversalContract.sol";
-import "@zetachain/protocol-contracts/contracts/evm/interfaces/IZRC20.sol";
-import "@zetachain/protocol-contracts/contracts/evm/interfaces/IGatewayEVM.sol";
+import "@zetachain/protocol-contracts/contracts/zevm/interfaces/UniversalContract.sol";
+import "@zetachain/protocol-contracts/contracts/zevm/interfaces/IZRC20.sol";
 
 // ============= UniswapV2 风格 DEX (Zeta DEX) =============
 interface IUniswapV2Router {
@@ -15,10 +14,14 @@ interface IUniswapV2Router {
         address to,
         uint deadline
     ) external returns (uint[] memory amounts);
+
+    function getAmountsIn(
+        uint amountOut, 
+        address[] calldata path
+    ) external view returns (uint[] memory amounts);
 }
 
 contract ZetaDCAExecutionBTC is UniversalContract {
-    IGatewayEVM public immutable gateway;
     IUniswapV2Router public immutable dex;
 
     
@@ -41,15 +44,19 @@ contract ZetaDCAExecutionBTC is UniversalContract {
         bytes indexed userId,
         uint256 balance
     );
+    event WithdrawExecuted(
+        bytes indexed userId,
+        uint256 btcRequired,
+        uint256 usdtOut,
+        address indexed recipientEVM
+    );
 
     constructor(
-        address _gateway,
         address _dex,
         address _usdt,
         address _usdc,
         address _btc
     ) {
-        gateway = IGatewayEVM(_gateway);
         dex = IUniswapV2Router(_dex);
         USDT_ZRC20 = _usdt;
         USDC_ZRC20 = _usdc;
@@ -89,7 +96,7 @@ contract ZetaDCAExecutionBTC is UniversalContract {
     }
 
     /// @notice 查询用户在 ZetaChain 上累计买到多少 BTC（ZRC20）
-    function getUserBalance(bytes calldata userId) internal {
+    function getUserBalance(bytes memory userId) internal {
             uint256 bal = userBalances[userId];
             emit UserBalance(userId, bal);
     }
@@ -158,9 +165,6 @@ contract ZetaDCAExecutionBTC is UniversalContract {
 
         require(userBalances[userId] >= btcRequired, "Not enough balance");
 
-        // 扣减余额
-        userBalances[userId] -= btcRequired;
-
         // 2. 用 BTC → USDT swap
         IZRC20(BTC_ZRC20).approve(address(dex), btcRequired);
 
@@ -175,22 +179,14 @@ contract ZetaDCAExecutionBTC is UniversalContract {
         usdtOut = results[1];
         require(usdtOut >= usdtDesired, "Slippage too high");
 
-        // 3. approve USDT 给 gateway
-        IZRC20(USDT_ZRC20).approve(address(gateway), usdtOut);
+        //gas检查
+        (address gasToken, uint256 gasFee) = IZRC20(USDT_ZRC20).withdrawGasFee();
+        require(IZRC20(gasToken).balanceOf(address(this)) >= gasFee, "Insufficient gas fee");
 
-        // 4. 从 ZetaChain withdraw 回源链（用户钱包）
-        gateway.withdraw(
-            recipient,           // 20 bytes user EVM address
-            usdtOut,
-            USDT_ZRC20,
-            RevertOptions({
-                revertAddress: address(0),
-                callOnRevert: false,
-                abortAddress: address(0),
-                revertMessage: "",
-                onRevertGasLimit: 0
-            })
-        );
+        IZRC20(USDT_ZRC20).withdraw(abi.encodePacked(recipientEVM), usdtOut);
+
+         // 扣减余额
+        userBalances[userId] -= btcRequired;
 
         emit WithdrawExecuted(userId, btcRequired, usdtOut, recipientEVM);
 
