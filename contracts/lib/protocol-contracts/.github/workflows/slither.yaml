@@ -1,0 +1,66 @@
+name: Slither
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**'
+  pull_request:
+    branches:
+      - "**"
+    paths:
+      - '**'
+    types:
+      - synchronize
+      - opened
+      - reopened
+      - ready_for_review
+
+defaults:
+  run:
+    working-directory: .
+
+jobs:
+  slither:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: "21.1.0"
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Install dependencies
+        run: |
+          yarn install
+          forge soldeer update
+
+      - name: Build project
+        run: forge build
+
+      - name: Run Slither
+        uses: crytic/slither-action@main
+        id: slither
+        continue-on-error: true
+        with:
+          sarif: results.sarif
+          node-version: "21.1.0"
+          slither-config: "slither.config.json"
+          solc-version: "0.8.26"
+          fail-on: medium
+          target: "./"
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ${{ steps.slither.outputs.sarif }}

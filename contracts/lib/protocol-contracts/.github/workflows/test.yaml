@@ -1,0 +1,56 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**'
+  pull_request:
+    branches:
+      - "**"
+    paths:
+      - '**'
+    types:
+      - synchronize
+      - opened
+      - reopened
+      - ready_for_review
+
+defaults:
+  run:
+    working-directory: .
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "21.1.0"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Install Dependencies
+        run: |
+          yarn install
+          forge soldeer update
+
+      - name: Test
+        run: yarn test
+
+      - name: Coverage
+        run: yarn coverage
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v4.0.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: lcov.info

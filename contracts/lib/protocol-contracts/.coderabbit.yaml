@@ -1,0 +1,24 @@
+reviews:
+  path_filters:
+    - "!pkg/**"
+    - "!types/**"
+    - "!docs/**"
+    - "!data/**"
+  path_instructions:
+    - path: "contracts/**"
+      instructions: >-
+        Review the Solidity contracts for security vulnerabilities and best practices.
+    - path: "test/**"
+      instructions: >-
+        Review the test files for proper coverage, edge cases, and best practices.
+    - path: "scripts/**"
+      instructions: >-
+        Review the Hardhat scripts for best practices.
+    - path: "tasks/**"
+      instructions: >-
+        Review the Hardhat tasks for best practices.
+  auto_review:
+    base_branches:
+      - main
+  poem: false
+  collapse_walkthrough: true

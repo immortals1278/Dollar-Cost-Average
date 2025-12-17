@@ -95,6 +95,13 @@ contract ZetaDCAExecutionBTC is UniversalContract {
         }
     }
 
+    function onCall(
+        MessageContext calldata context,
+        bytes calldata message
+    ) external payable override onlyGateway {
+        revert("Native ZETA transfers not supported");
+    }
+
     /// @notice 查询用户在 ZetaChain 上累计买到多少 BTC（ZRC20）
     function getUserBalance(bytes memory userId) internal {
             uint256 bal = userBalances[userId];

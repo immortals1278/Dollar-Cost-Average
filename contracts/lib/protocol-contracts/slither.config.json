@@ -1,0 +1,4 @@
+{
+  "detectors_to_exclude": "",
+  "filter_paths": "contracts,artifacts,cache,data,dist,docs,lib,node_modules,pkg,scripts,test,testing,types"
+}

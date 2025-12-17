@@ -1,0 +1,64 @@
+name: Generated Files are Updated
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "**"
+  pull_request:
+    branches:
+      - "**"
+    paths:
+      - "**"
+    types:
+      - synchronize
+      - opened
+      - reopened
+      - ready_for_review
+
+defaults:
+  run:
+    working-directory: .
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "21.1.0"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq unzip
+          yarn install
+          forge soldeer update
+
+      - name: Install specific version of aibgen
+        run: |
+          wget https://gethstore.blob.core.windows.net/builds/geth-alltools-linux-amd64-1.11.5-a38f4108.tar.gz
+          tar -zxvf geth-alltools-linux-amd64-1.11.5-a38f4108.tar.gz
+          sudo mv geth-alltools-linux-amd64-1.11.5-a38f4108/abigen /usr/local/bin/
+
+      - name: Generate Go packages and types
+        run: |
+          yarn generate
+
+      - name: Check for changes
+        run: |
+          if git diff --exit-code --ignore-space-change --ignore-all-space --ignore-cr-at-eol -- pkg types; then
+            echo "Generated Go files are up-to-date."
+          else
+            echo "::error::Generated files are not up-to-date. Please run 'yarn generate' locally and commit any changes."
+            exit 1
+          fi

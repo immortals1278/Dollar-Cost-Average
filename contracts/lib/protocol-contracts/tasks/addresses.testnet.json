@@ -1,0 +1,9 @@
+[
+  {
+    "address": "0x6c533f7fe93fae114d0954697069df33c9b74fd7",
+    "category": "omnichain",
+    "chain_id": 7001,
+    "chain_name": "zeta_testnet",
+    "type": "gateway"
+  }
+]
