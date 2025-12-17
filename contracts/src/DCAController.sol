@@ -14,11 +14,13 @@ contract DCAController {
 
     IGatewayEVM public gateway;
     address public universalApp;         // 通用合约地址
+    address public universalAppBTC;  // BTC通用合约地址
     uint256 public zetaChainId;          
 
     
     struct DCASchedule {
         address user;            // 用户
+        uint8 targetType;  // 1 = SOL, 2 = BTC
         address tokenIn;         //投入币种
         uint256 amount;          // 每次投入金额（源链 token）
         uint256 interval;        // 间隔时间
@@ -41,10 +43,12 @@ contract DCAController {
     constructor(
         address _gateway,
         address _universalApp,
+        address _universalAppBTC,
         uint256 _zetaChainId
     ) {
         gateway = IGatewayEVM(_gateway);
         universalApp = _universalApp;
+        universalAppBTC = _universalAppBTC;
         zetaChainId = _zetaChainId;
     }
 
@@ -53,11 +57,13 @@ contract DCAController {
     function createSchedule(
         address tokenIn,
         uint256 amount,
-        uint256 interval
+        uint256 interval,
+        uint8 targetType
     ) external returns (uint256 id) {
         id = nextScheduleId++;
         schedules[id] = DCASchedule({
             user: msg.sender,
+            targetType: targetType,
             tokenIn: tokenIn,
             amount: amount,
             interval: interval,
@@ -65,7 +71,7 @@ contract DCAController {
             totalInvested: 0,
             active: true
         });
-
+        require(targetType == 1 || targetType == 2, "Invalid target");
         emit ScheduleCreated(id, msg.sender, amount);
     }
 
@@ -97,10 +103,12 @@ contract DCAController {
             )
         );
 
+        address targetApp = s.targetType == 1 ? universalApp : universalAppBTC;
+        
         // 送到 ZetaChain 执行 swap
         gateway.callContract(
             zetaChainId,
-            universalApp,
+            targetApp,
             message,
             "" 
         );
@@ -136,9 +144,11 @@ contract DCAController {
             )
         );
 
+        address targetApp = s.targetType == 1 ? universalApp : universalAppBTC;
+
         gateway.callContract(
             zetaChainId,
-            universalApp,
+            targetApp,
             message,
             ""
         );
@@ -160,9 +170,12 @@ contract DCAController {
             abi.encode(userId)
         );
 
+        DCASchedule storage s = schedules[id];
+        address targetApp = s.targetType == 1 ? universalApp : universalAppBTC;
+
         gateway.callContract(
             zetaChainId,
-            universalApp,
+            targetApp,
             message,
             ""
         );

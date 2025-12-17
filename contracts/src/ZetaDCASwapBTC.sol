@@ -28,7 +28,6 @@ contract ZetaDCAExecutionBTC is UniversalContract {
     mapping(bytes => uint256) public userBalances; 
 
     /// @notice ZRC20 地址
-    address public immutable USDT_ZRC20;
     address public immutable USDC_ZRC20;
     address public immutable BTC_ZRC20;
     
@@ -58,7 +57,6 @@ contract ZetaDCAExecutionBTC is UniversalContract {
         address _btc
     ) {
         dex = IUniswapV2Router(_dex);
-        USDT_ZRC20 = _usdt;
         USDC_ZRC20 = _usdc;
         BTC_ZRC20  = _btc;
     }
@@ -115,7 +113,7 @@ contract ZetaDCAExecutionBTC is UniversalContract {
     ) internal returns (uint256 btcOut) {
         require(amountIn > 0, "Zero amount");
         require(
-            tokenIn == USDT_ZRC20 || tokenIn == USDC_ZRC20,
+            tokenIn == USDC_ZRC20,
             "Unsupported token"
         );
 

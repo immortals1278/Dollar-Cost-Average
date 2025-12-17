@@ -8,5 +8,7 @@ remappings = [
 
 [dependencies]
 
-
+[rpc_endpoints]
+zetachain_testnet = "https://rpc.ankr.com/zetachain_evm_athens_testnet"
+base_sepolia = "https://sepolia.base.org"
 
