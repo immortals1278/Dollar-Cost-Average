@@ -1,17 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
+import "forge-std/console.sol";
 import {Script} from "forge-std/Script.sol";
-import {ZetaDCAExecutionBTC} from "../src/ZetaDCAExecutionBTC.sol";  // 改成你的BTC合约路径
+import {ZetaDCAExecutionBTC} from "../src/ZetaDCASwapBTC.sol";  // 改成你的BTC合约路径
 
 contract DeployUniversalBTC is Script {
     function run() external {
         vm.startBroadcast();
-        address dex = Ox2ca7dc5c9b07e5c3e3d3f5c9c9e5c3e3d3f5c9c;            // 同SOL（测试网DEX通常通用）
-        address usdc = 0xYOUR_USDC_ZRC20;            // 只用一个稳定币地址测试
-        address btc = 0xYOUR_BTC_ZRC20;              // BTC ZRC20测试网地址
+        address dex = 0x2ca7d64A7EFE2D62A725E2B35Cf7230D6677FfEe;            // 同SOL（测试网DEX通常通用）
+        address usdc = 0xd0eFed75622e7AA4555EE44F296dA3744E3ceE19;
+        address btc = 0xfC9201f4116aE6b054722E10b98D904829b469c3;              // BTC ZRC20测试网地址
 
-        ZetaDCAExecutionBTC universalBTC = new ZetaDCAExecutionBTC(gateway, dex, usdc, address(0), btc);  // USDT填0或同一个USDC
+        ZetaDCAExecutionBTC universalBTC = new ZetaDCAExecutionBTC(dex, usdc, btc);  // USDT填0或同一个USDC
 
         vm.stopBroadcast();
         console.log("Universal BTC Contract on ZetaChain:", address(universalBTC));

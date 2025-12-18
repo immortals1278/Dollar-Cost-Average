@@ -5,6 +5,7 @@ pragma solidity ^0.8.26;
 import "@zetachain/protocol-contracts/contracts/zevm/interfaces/UniversalContract.sol";
 import "@zetachain/protocol-contracts/contracts/zevm/interfaces/IZRC20.sol";
 
+
 // ============= UniswapV2 风格 DEX (Zeta DEX) =============
 interface IUniswapV2Router {
     function swapExactTokensForTokens(
@@ -23,7 +24,6 @@ interface IUniswapV2Router {
 
 contract ZetaDCAExecutionBTC is UniversalContract {
     IUniswapV2Router public immutable dex;
-
     
     mapping(bytes => uint256) public userBalances; 
 
@@ -52,7 +52,6 @@ contract ZetaDCAExecutionBTC is UniversalContract {
 
     constructor(
         address _dex,
-        address _usdt,
         address _usdc,
         address _btc
     ) {
@@ -106,6 +105,7 @@ contract ZetaDCAExecutionBTC is UniversalContract {
             emit UserBalance(userId, bal);
     }
 
+
     function _executeSwap(
         bytes memory userId, 
         address tokenIn, 
@@ -153,45 +153,46 @@ contract ZetaDCAExecutionBTC is UniversalContract {
     /// @notice 用户提现（输入希望收到的 USDT 数量）
     function _executeWithdraw(
         bytes memory userId,
-        uint256 usdtDesired,
+        uint256 usdcDesired,
         bytes memory recipient//用户接受地址
     ) internal returns (uint256 btcSpent, uint256 usdtOut) {
 
         require(recipient.length == 20, "Recipient must be EVM address (20 bytes)");
         address recipientEVM = address(bytes20(recipient));//将bytes变成能用的地址
 
-        // 1. 先反算需要多少 btc（ZRC20）才能换出 usdtDesired
+        // 1. 先反算需要多少 btc（ZRC20）才能换出 usdcDesired
         address[] memory path = new address[](2);
         path[0] = BTC_ZRC20;
-        path[1] = USDT_ZRC20;
+        path[1] = USDC_ZRC20;
 
-        uint[] memory quote = dex.getAmountsIn(usdtDesired, path);
+        uint[] memory quote = dex.getAmountsIn(usdcDesired, path);
         uint256 btcRequired = quote[0];
 
         require(userBalances[userId] >= btcRequired, "Not enough balance");
+
+         // 扣减余额
+        userBalances[userId] -= btcRequired;
 
         // 2. 用 BTC → USDT swap
         IZRC20(BTC_ZRC20).approve(address(dex), btcRequired);
 
         uint[] memory results = dex.swapExactTokensForTokens(
             btcRequired,
-            usdtDesired,           // 用户希望至少收到这么多 U
+            usdcDesired,           // 用户希望至少收到这么多 U
             path,
             address(this),
             block.timestamp + 300
         );
 
         usdtOut = results[1];
-        require(usdtOut >= usdtDesired, "Slippage too high");
+        require(usdtOut >= usdcDesired, "Slippage too high");
 
-        //gas检查
-        (address gasToken, uint256 gasFee) = IZRC20(USDT_ZRC20).withdrawGasFee();
-        require(IZRC20(gasToken).balanceOf(address(this)) >= gasFee, "Insufficient gas fee");
+        // Gas fee 处理
+        (address gasZRC20, uint256 gasFee) = IZRC20(USDC_ZRC20).withdrawGasFee();
+        require(IZRC20(gasZRC20).balanceOf(address(this)) >= gasFee, "Insufficient gas fee balance");
 
-        IZRC20(USDT_ZRC20).withdraw(abi.encodePacked(recipientEVM), usdtOut);
-
-         // 扣减余额
-        userBalances[userId] -= btcRequired;
+        // 直接 withdraw（官方 swap 示例常用这个）
+        IZRC20(USDC_ZRC20).withdraw(abi.encodePacked(recipientEVM), usdtOut);
 
         emit WithdrawExecuted(userId, btcRequired, usdtOut, recipientEVM);
 

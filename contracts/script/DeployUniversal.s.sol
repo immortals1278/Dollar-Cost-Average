@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
+import "forge-std/console.sol";
 import {Script} from "forge-std/Script.sol";
-import {ZetaDCAExecution} from "../src/ZetaDCAExecution.sol";
+import {ZetaDCAExecution} from "../src/ZetaDCASwap.sol";
 
 contract DeployUniversal is Script {
     function run() external {
         vm.startBroadcast();
+        address dex = 0x2ca7d64A7EFE2D62A725E2B35Cf7230D6677FfEe;            // Uniswap v2 router on testnet
+        address usdc = 0xd0eFed75622e7AA4555EE44F296dA3744E3ceE19;
+        address sol = 0xADF73ebA3Ebaa7254E859549A44c74eF7cff7501;
 
-        address dex = Ox2ca7dc5c9b07e5c3e3d3f5c9c9e5c3e3d3f5c9c;            // Uniswap v2 router on testnet
-        address usdc = 0xYOUR_USDC_ZRC20;  
-        address sol = 0xYOUR_SOL_ZRC20;
-
-        ZetaDCAExecution universal = new ZetaDCAExecution(gateway, dex, usdt, usdc, sol);
+        ZetaDCAExecution universal = new ZetaDCAExecution(dex, usdc, sol);
 
         vm.stopBroadcast();
         console.log("Universal Contract on ZetaChain:", address(universal));
